@@ -61,7 +61,8 @@ import static java.util.Locale.ENGLISH;
 public class RangerSystemAccessControl
   implements SystemAccessControl {
   private static Logger LOG = LoggerFactory.getLogger(RangerSystemAccessControl.class);
-
+  
+  final public static String INFORMATION_SCHEMA_NAME = "information_schema";
   final public static String RANGER_CONFIG_KEYTAB = "ranger.keytab";
   final public static String RANGER_CONFIG_PRINCIPAL = "ranger.principal";
   final public static String RANGER_CONFIG_USE_UGI = "ranger.use_ugi";
@@ -638,9 +639,30 @@ public class RangerSystemAccessControl
    */
   @Override
   public Set<String> filterColumns(SystemSecurityContext context, CatalogSchemaTableName table, Set<String> columns) {
-    return columns;
+    
+    // if (INFORMATION_SCHEMA_NAME.equals(table.getSchemaTableName().getSchemaName())) {
+    //   return columns;
+    // }
+    
+    Set<String> filteredColumns = new HashSet<>();
+    if (columns.size() > 0) {
+      for (String column : columns) {
+        LOG.info("==> RangerSystemAccessControl.filterColumns(" + column + ")");
+        RangerTrinoResource res = createResource(
+          table.getCatalogName(), 
+          table.getSchemaTableName().getSchemaName(),
+          table.getSchemaTableName().getTableName(), 
+          Optional.of(column)
+        );
+        if (hasPermission(res, context, TrinoAccessType.SELECT)) {
+          filteredColumns.add(column);
+        }
+      }
+    }
+    
+    return filteredColumns;
   }
-
+  
   /** QUERY **/
 
   /**
